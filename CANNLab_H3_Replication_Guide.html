@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CANNLab A3 · MiniMax H3 + ComfyUI 复刻操作手册</title>
+<style>
+:root{--bg:#f7f8fa;--panel:#fff;--ink:#1f2329;--muted:#5f6b7a;--line:#e3e7ed;--accent:#1668dc;--code-bg:#1e2430;--code-ink:#e6edf3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 24px 80px;display:grid;grid-template-columns:250px minmax(0,1fr);gap:32px}
+aside{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 16px;font-size:13px}
+aside h2{margin:0 0 10px;font-size:14px;color:var(--muted);letter-spacing:.06em}
+aside ul{list-style:none;margin:0;padding:0}
+aside li{margin:3px 0}
+aside a{color:var(--ink);text-decoration:none;display:block;padding:3px 6px;border-radius:6px}
+aside a:hover{background:#eef4ff;color:var(--accent)}
+main{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:36px 42px;min-width:0}
+h1{font-size:28px;margin:0 0 18px;padding-bottom:14px;border-bottom:2px solid var(--accent);line-height:1.4}
+h2{font-size:21px;margin:38px 0 14px;padding:8px 0 8px 12px;border-left:4px solid var(--accent);background:linear-gradient(90deg,#eef4ff,transparent)}
+h3{font-size:17px;margin:26px 0 10px;color:#25406b}
+h4{font-size:15px;margin:20px 0 8px}
+p{margin:10px 0}
+blockquote{margin:16px 0;padding:12px 16px;background:#fff8e8;border-left:4px solid #f0a92a;border-radius:0 8px 8px 0;color:#5a4520}
+blockquote p{margin:4px 0}
+ul,ol{padding-left:24px;margin:10px 0}
+li{margin:5px 0}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:#f0f4fa;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fafbfd}
+code{font-family:"Cascadia Mono",Consolas,"SF Mono",monospace;font-size:.9em;background:#eef1f6;color:#b3306a;padding:2px 5px;border-radius:4px}
+pre{position:relative;background:var(--code-bg);border-radius:10px;padding:16px 16px 16px 18px;overflow-x:auto;margin:14px 0}
+pre code{background:none;color:var(--code-ink);padding:0;font-size:13px;line-height:1.65}
+.copy{position:absolute;right:8px;top:8px;background:#313b4d;color:#cfd8e6;border:1px solid #46536b;border-radius:6px;font-size:11px;padding:3px 9px;cursor:pointer;opacity:.75}
+.copy:hover{opacity:1;background:#3d4a60}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+a{color:var(--accent)}
+strong{color:#111a2b}
+@media(max-width:900px){.wrap{grid-template-columns:1fr;padding:16px}aside{position:static;max-height:none}main{padding:22px 18px}}
+@media print{body{background:#fff}.wrap{display:block;padding:0}aside{display:none}main{border:0;padding:0}pre{white-space:pre-wrap}.copy{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<aside><h2>目录</h2><div class="toc">
+<ul>
+<li><a href="#cannlab-a3-minimax-h3-comfyui">CANNLab A3 · MiniMax H3 + ComfyUI 复刻操作手册</a><ul>
+<li><a href="#0-90">0. 先看这五条，能省掉 90% 的返工</a></li>
+<li><a href="#1">1. 环境规格与版本对照（创建环境前确认）</a></li>
+<li><a href="#2-2">2. 创建环境（控制台，约 2 分钟）</a></li>
+<li><a href="#25">2.5 一键初始化脚本（推荐：自动完成上传 + 预检）</a><ul>
+<li><a href="#_1">套件托管到项目仓库（推荐，方便多账号共享）</a></li>
+</ul>
+</li>
+<li><a href="#3">3. 上传脚本包</a><ul>
+<li><a href="#_2">脚本包文件清单</a></li>
+</ul>
+</li>
+<li><a href="#4-3060">4. 一键部署（核心，约 30–60 分钟）</a><ul>
+<li><a href="#_3">阶段说明</a></li>
+<li><a href="#30">⚠️ 30 分钟空闲自动关机</a></li>
+<li><a href="#_4">检查点</a></li>
+</ul>
+</li>
+<li><a href="#5-sentencepiece-tls">5. 最关键的坑：sentencepiece 静态 TLS</a></li>
+<li><a href="#6">6. 服务端口与启动</a></li>
+<li><a href="#7">7. 出片（视频 + 原生音频）</a></li>
+<li><a href="#8-comfyui">8. ComfyUI 图形界面（可选，三选一）</a><ul>
+<li><a href="#afrpc-frps">路线 A：frpc（需要你自备 frps 服务端，地址固定）</a></li>
+<li><a href="#bcloudflared-quick-tunnel">路线 B：cloudflared Quick Tunnel（零服务端，代价是域名每次变）</a></li>
+<li><a href="#c-vs-code-remote-ssh">路线 C：本地 VS Code Remote SSH 转发</a></li>
+<li><a href="#_5">为什么必须加认证代理</a></li>
+</ul>
+</li>
+<li><a href="#9">9. 开机自启</a></li>
+<li><a href="#10">10. 文生图 / 图生图扩展（可选）</a><ul>
+<li><a href="#workflows_to_test">工作流包 workflows_to_test/</a></li>
+</ul>
+</li>
+<li><a href="#11">11. 卡时管理与关机</a></li>
+<li><a href="#12">12. 故障排查速查表</a></li>
+<li><a href="#13">13. 换账号时必须替换／确认的清单</a></li>
+<li><a href="#a">附录 A：常用命令速查</a></li>
+<li><a href="#b">附录 B：参考来源</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</aside>
+<main>
+<h1 id="cannlab-a3-minimax-h3-comfyui">CANNLab A3 · MiniMax H3 + ComfyUI 复刻操作手册</h1>
+<blockquote>
+<p><strong>目标</strong>：在一个全新的 CANNLab 账号里，从零复刻出「MiniMax H3 视频 + 原生音频出片 → ComfyUI 图形界面 → 开机自启 → 文生图/图生图模型」的完整环境。</p>
+<p><strong>实测基线</strong>：2026-11-14 ~ 11-15，CANNLab A3 / 1×NPU 910C / CANN 9.0.0 镜像。端到端出片成功（338–408 秒生成约 5.17 秒的 H.264 视频 + AAC 原生音频）。</p>
+<p><strong>配套文件</strong>：<code>CANNLab_H3_Replication_Kit.zip</code>，内含本文档、全部脚本、33 个工作流 JSON/PNG。把 zip 解压到新环境的 <code>/mnt/workspace/</code> 即可开工。</p>
+<p><strong>文档约定</strong>：<code>$ROOT</code> = <code>/mnt/workspace</code>；所有命令在 CANNLab Web IDE 的终端里执行；<code>⚠️</code> 标记的是踩过的坑。</p>
+</blockquote>
+<hr />
+<h2 id="0-90">0. 先看这五条，能省掉 90% 的返工</h2>
+<ol>
+<li><strong>环境选错必定失败</strong>。必须用 CANNLab <strong>A3</strong> 环境 + <code>cann_9.0.0</code> 模板。GitCode Notebook（910B4 / 30GB HBM / CANN 8.5 / 50GB 且不持久化 / 单次 2 小时）与本项目硬件、版本、存储全不匹配。</li>
+<li><strong>只有 <code>/mnt/workspace</code> 和 <code>/home</code> 是持久卷</strong>。<code>/etc</code>、<code>/opt</code> 每次开机由镜像重建；所有脚本、权重、产物一律放 <code>/mnt/workspace</code>。</li>
+<li><strong>开机即扣卡时</strong>。1 卡时 = 卡数 × 运行小时，与 NPU 是否真的在算无关；新账号一次性赠送 100 卡时，空闲 30 分钟自动关机。关机不扣费且持久卷数据保留，<strong>部署/测试完记得关机</strong>。</li>
+<li><strong>容器没有公网入站，也没有端口转发能力</strong>。Web IDE 里搜「端口 / port」都找不到入口，浏览器打不开 <code>127.0.0.1:8188</code>；且无 <code>CAP_NET_ADMIN</code>、<code>TUNSETIFF</code> 报 <code>Operation not permitted</code>，<strong>VNT / WireGuard 这类要 TUN 的 VPN 全部不可用</strong>。</li>
+<li><strong>本项目不是通用安装器</strong>。上游 <code>OwenLittleWhite/cannlab-h3-ascend</code> 明确说「脚本针对测试过的 CANNLab 镜像」，作者靠 <code>constraints.txt</code> 把依赖全锁死。换镜像 = 要重新做依赖适配（本手册已包含 20261106 镜像的适配结果）。</li>
+</ol>
+<hr />
+<h2 id="1">1. 环境规格与版本对照（创建环境前确认）</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>必须值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平台</td>
+<td>CANNLab（<code>https://gitcode.com/org/cann/cannlab</code>）</td>
+<td>不是普通 Notebook</td>
+</tr>
+<tr>
+<td>环境类型</td>
+<td><strong>NPU A3</strong></td>
+<td>页面注明每类环境限建一个</td>
+</tr>
+<tr>
+<td>模板</td>
+<td><code>cann_9_0_0-py3.11-a3-arm-20261106</code></td>
+<td>⚠️ 不要选 9.1.0 / lite-train 模板</td>
+</tr>
+<tr>
+<td>规格</td>
+<td><code>1*NPU 910C, 40vCPUs, 240GiB</code></td>
+<td>910C 单卡暴露 <strong>2 个逻辑 NPU</strong>，项目要求 ≥2</td>
+</tr>
+<tr>
+<td>数据盘</td>
+<td>盘1 EVS 200GiB → <code>/mnt/workspace</code>；盘2 EVS 200GiB → <code>/home</code></td>
+<td>脚本硬编码这些路径，不要改</td>
+</tr>
+<tr>
+<td>权重空间</td>
+<td>≥ 80GB 空闲</td>
+<td>5 个权重合计 <strong>67.7GB</strong></td>
+</tr>
+<tr>
+<td>Python</td>
+<td>3.11</td>
+<td>镜像自带</td>
+</tr>
+<tr>
+<td>torch / torch_npu</td>
+<td><code>2.7.1+cpu</code> / <code>2.7.1.post4</code></td>
+<td>镜像预装，<strong>不要覆盖</strong></td>
+</tr>
+<tr>
+<td>torchaudio</td>
+<td><code>2.7.1</code></td>
+<td>镜像自带 2.11，ABI 不符，需 <code>--no-deps</code> 强制装 2.7.1</td>
+</tr>
+<tr>
+<td>CANN</td>
+<td>9.0.0</td>
+<td><code>set_env.sh</code> 在 <code>/home/developer/Ascend/cann-9.0.0/</code></td>
+</tr>
+<tr>
+<td>ComfyUI</td>
+<td>commit <code>bd34f338ac505ea79e43968753968a464060e609</code></td>
+<td>补丁只能打在这个 commit 上</td>
+</tr>
+<tr>
+<td>权重</td>
+<td>5 个 ≈ 67.7GB</td>
+<td>FL2VA DiT INT8 34GB + Qwen3-VL TE INT8 27.1GB + video VAE 5.2GB + audio VAE 0.6GB + Turbo LoRA 0.78GB</td>
+</tr>
+</tbody>
+</table>
+<p><strong>卡时规则</strong>（官方用户指南 + 账号实测）：状态「运行中」消耗卡时，「关机/休眠/异常」不消耗；额度耗尽自动关机并释放资源；初始 100 卡时是一次性赠送，不是每月发放；官方未公开初始额度的到期日。页面读数有结算延迟，刷新才更新。</p>
+<hr />
+<h2 id="2-2">2. 创建环境（控制台，约 2 分钟）</h2>
+<ol>
+<li>打开 <code>https://gitcode.com/org/cann/cannlab/environment</code>，点「新建环境」。</li>
+<li>环境类型选 <strong>NPU A3</strong>；模板下拉选 <code>cann_9.0.0 py3.11-A3-arm-20261106</code>（默认项是 9.1.0 lite，务必改）。</li>
+<li>规格只有 <code>1*NPU 910C / 40vCPUs / 240GiB</code> 一种；实例名随意（本例 <code>DevEnvC_clzRc</code>）。</li>
+<li>创建后点「启动」→ 状态变「运行中」→ 点「连接」→ 选「Web IDE」，会打开 CodeArts IDE（VS Code Web fork），工作目录 <code>/mnt/workspace</code>。</li>
+<li>打开底部「终端」面板。</li>
+</ol>
+<hr />
+<h2 id="25">2.5 一键初始化脚本（推荐：自动完成上传 + 预检）</h2>
+<p>套件里新增了 <code>init_replicate.sh</code>，把「获取套件 + 解包 + 预检」三步合成一条命令，省去手动 <code>unzip</code> 和逐条核对。它会在跑 <code>deploy-h3-cannlab.sh precheck</code> 之前，先做一轮轻量自检（架构 / NPU / 持久卷可写性 / 磁盘空闲 / 下载工具 / 套件完整性），任何一项不达标就立即中止并给出修复提示，不会白白开始下载 67.7GB 权重。</p>
+<p><strong>用法（四选一）：</strong></p>
+<pre><code class="language-bash"># 方式 A：已把 CANNLab_H3_Replication_Kit.zip 拖进 /mnt/workspace/，直接跑
+bash /mnt/workspace/init_replicate.sh
+
+# 方式 B：套件托管在直链 zip，自动下载（把 URL 换成你自己的）
+KIT_URL=https://你的域名/CANNLab_H3_Replication_Kit.zip \
+  bash &lt;(curl -fsSL https://你的域名/init_replicate.sh)
+
+# 方式 C：套件在 git 仓库（推荐分享给另一个账号的做法，见下）
+KIT_REPO=https://gitcode.com/你的名/你的仓库.git \
+  bash &lt;(curl -fsSL https://你的域名/init_replicate.sh)
+
+# 方式 D：把仓库 git clone 下来后，直接在 clone 目录里跑（无需再下载）
+git clone https://gitcode.com/你的名/你的仓库.git ~/kit &amp;&amp; cd ~/kit
+bash init_replicate.sh          # 脚本会自动识别「自己就在套件目录里」
+</code></pre>
+<p>预检通过后，脚本会打印后续 5 步（部署 / 开公网 / 自启 / 下载文生图模型 / 关机）。如果你确定要直接开跑，<strong>加 <code>--deploy</code></strong> 让它预检完立刻继续 <code>deploy-h3-cannlab.sh all</code>：</p>
+<pre><code class="language-bash">bash /mnt/workspace/init_replicate.sh --deploy
+</code></pre>
+<blockquote>
+<p>⚠️ 脚本只解决「获取 + 预检」，创建环境（2 分钟，选 1×NPU 910C + CANN 9.0.0）仍需在控制台手动做，见第 2 节。
+⚠️ 若用 <code>bash &lt;(curl ...)</code> 方式，请确保你托管 <code>init_replicate.sh</code> 的地址与 <code>KIT_URL</code> 都可达；否则退回方式 A（本地上传 zip）最稳妥。</p>
+</blockquote>
+<h3 id="_1">套件托管到项目仓库（推荐，方便多账号共享）</h3>
+<p><strong>可以，而且能安全公开托管</strong>——套件压缩包里<strong>不含任何明文凭据</strong>：frps token 与 ComfyUI 密码都在部署时运行时生成（写进 <code>/mnt/workspace/.frps_token</code>、<code>/.comfy_web_pass</code>，权限 600），从不在 zip 内。唯一露脸的是 <code>comfy_tunnel.sh</code> 里的 frps 主机名（<code>vnts2.770710712.xyz</code>，本就是占位符、文档要求复刻时 <code>sed</code> 替换成自己的），风险很低。</p>
+<p><strong>把套件推上 GitCode 仓库（在你本机执行）：</strong></p>
+<pre><code class="language-bash">cd D:/WorkBuddy/2026-11-14-19-55-19
+# 建仓后，把套件「解包后的文件」作为仓库内容（不要直接传那个 zip，init 走 git 路径要的是散文件）
+rm -rf /tmp/kit_repo &amp;&amp; mkdir -p /tmp/kit_repo &amp;&amp; \
+  unzip -o CANNLab_H3_Replication_Kit.zip -d /tmp/kit_repo &amp;&amp; \
+  cd /tmp/kit_repo &amp;&amp; \
+  git init -q &amp;&amp; git add -A &amp;&amp; git commit -qm &quot;CANNLab H3 + ComfyUI replicate kit&quot; &amp;&amp; \
+  git branch -M main &amp;&amp; \
+  git remote add origin https://gitcode.com/你的名/你的仓库.git &amp;&amp; \
+  git push -u origin main
+</code></pre>
+<ul>
+<li><strong>公开仓库</strong>最省事：另一个账号无需登录就能 clone。</li>
+<li><strong>私有仓库</strong>：给另一个账号加 collaborator，或在 clone URL 里带只读 PAT：<code>https://&lt;token&gt;@gitcode.com/你的名/你的仓库.git</code>。</li>
+<li>GitCode 的 Raw 直链（<code>init_replicate.sh</code> 的托管地址，用于方式 C 那个 <code>curl</code>）在文件页面点「Raw」按钮复制即可，形如 <code>https://gitcode.com/你的名/你的仓库/-/raw/main/init_replicate.sh</code>。</li>
+</ul>
+<p><strong>另一个账号消费（在 CANNLab Web IDE 终端）：</strong></p>
+<pre><code class="language-bash"># 最简单：clone 后直接跑（方式 D）
+git clone https://gitcode.com/你的名/你的仓库.git ~/kit &amp;&amp; cd ~/kit &amp;&amp; bash init_replicate.sh
+
+# 或一行流（方式 C，脚本自己再去 clone 一遍套件）：
+KIT_REPO=https://gitcode.com/你的名/你的仓库.git \
+  bash &lt;(curl -fsSL https://gitcode.com/你的名/你的仓库/-/raw/main/init_replicate.sh)
+</code></pre>
+<hr />
+<h2 id="3">3. 上传脚本包</h2>
+<p>把 <code>CANNLab_H3_Replication_Kit.zip</code> 的内容放到 <code>/mnt/workspace/</code>。两种方式：</p>
+<p><strong>方式 A（推荐，Web IDE 有上传功能）</strong>：在左侧资源管理器 <code>WORKSPACE</code> 上右键上传文件，或把本地文件直接拖进去，然后解压：</p>
+<pre><code class="language-bash">cd /mnt/workspace &amp;&amp; unzip -o CANNLab_H3_Replication_Kit.zip
+</code></pre>
+<p><strong>方式 B（只有终端时，用 base64 传单个文件）</strong>：在本地执行 <code>base64 -w0 文件名</code> 得到字符串，到 Web IDE 终端执行：</p>
+<pre><code class="language-bash">echo '这里粘贴base64字符串' | base64 -d &gt; /mnt/workspace/文件名
+</code></pre>
+<blockquote>
+<p>⚠️ 多行 heredoc 在 CodeArts 终端里会卡住 shell（等结束标记）；要传多行脚本，一律 base64 单行上传。终端里 <code>!</code> 会触发 bash 历史扩展，命令里别带 <code>!</code>。</p>
+</blockquote>
+<h3 id="_2">脚本包文件清单</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deploy-h3-cannlab.sh</code></td>
+<td><strong>核心</strong>：分阶段部署（预检/代码/依赖/权重/配置/启动/出片）</td>
+</tr>
+<tr>
+<td><code>gen_video.py</code> / <code>gen_video.sh</code> / <code>prompt.txt</code></td>
+<td>改提示词一键出片，不依赖图形界面</td>
+</tr>
+<tr>
+<td><code>comfy_tunnel_auth.py</code></td>
+<td>aiohttp 反向代理 <code>8189 → 8188</code>，带 HTTP Basic Auth + WebSocket 转发</td>
+</tr>
+<tr>
+<td><code>comfy_tunnel.sh</code></td>
+<td>公网入口管理（start/stop/status/url/restart）</td>
+</tr>
+<tr>
+<td><code>setup_autostart.sh</code> / <code>auto_start.sh</code></td>
+<td>开机自启钩子与启动脚本</td>
+</tr>
+<tr>
+<td><code>download_models.sh</code></td>
+<td>追加文生图/图生图模型下载</td>
+</tr>
+<tr>
+<td><code>init_replicate.sh</code></td>
+<td><strong>一键初始化</strong>：获取套件 + 解包 + 预检（见 2.5 节）</td>
+</tr>
+<tr>
+<td><code>workflows_to_test/</code></td>
+<td>33 个工作流（ready / official / community）</td>
+</tr>
+<tr>
+<td><code>CANNLab_H3_Replication_Guide.md</code></td>
+<td>本文档</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-3060">4. 一键部署（核心，约 30–60 分钟）</h2>
+<pre><code class="language-bash">cd /mnt/workspace
+bash deploy-h3-cannlab.sh precheck          # ① 必须先看这步全通过
+nohup bash deploy-h3-cannlab.sh all &gt; /mnt/workspace/_wb_all.log 2&gt;&amp;1 &amp;
+tail -f /mnt/workspace/_wb_all.log           # ② 看进度（Ctrl+C 只退出 tail，不中断任务）
+</code></pre>
+<p><code>precheck</code> 会检查：NPU 设备、<code>torch.npu.device_count() &gt;= 2</code>、<code>/mnt/workspace</code> 空闲 ≥80GB、CANN 9.0.0 <code>set_env.sh</code>、以及 hf-mirror / 清华 pip / GitCode 镜像的连通性。</p>
+<h3 id="_3">阶段说明</h3>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>做什么</th>
+<th>断点后续跑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>precheck</code></td>
+<td>硬件/版本/磁盘/网络体检</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>code</code></td>
+<td>拉项目源码、完整 clone ComfyUI 并锁定 commit、打 Ascend 补丁、装 custom_nodes、补齐路径</td>
+<td>幂等</td>
+</tr>
+<tr>
+<td><code>deps</code></td>
+<td>建 venv、修 torchaudio ABI、装锁定版依赖、api-gateway 独立 venv、<strong>静态 TLS 修复</strong>、运行时自检</td>
+<td>幂等</td>
+</tr>
+<tr>
+<td><code>models</code></td>
+<td>按 <code>model-manifest.json</code> 用 aria2 下载 67.7GB 权重并 sha256 校验</td>
+<td><code>bash deploy-h3-cannlab.sh models</code>（续传）</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>写 <code>api-gateway/config/ascend.json</code>、生成工作流模板</td>
+<td>幂等</td>
+</tr>
+<tr>
+<td><code>start</code></td>
+<td>启动 ComfyUI(8188) + api-gateway(8191)</td>
+<td>每次开机跑一次</td>
+</tr>
+<tr>
+<td><code>smoke</code></td>
+<td>提交第一个视频任务</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>fix</code></td>
+<td>单独重做静态 TLS 修复</td>
+<td>幂等</td>
+</tr>
+</tbody>
+</table>
+<p>其他常用命令：</p>
+<pre><code class="language-bash">bash deploy-h3-cannlab.sh models    # 权重下载中断后续传
+bash deploy-h3-cannlab.sh fix       # 单独重做静态 TLS 修复
+bash deploy-h3-cannlab.sh start     # 开机后启动服务
+bash deploy-h3-cannlab.sh smoke     # 出第一个视频
+</code></pre>
+<h3 id="30">⚠️ 30 分钟空闲自动关机</h3>
+<p><code>all</code> 阶段下载 67.7GB 权重实测约 57MB/s、20 分钟左右，但环境「持续空闲 30 分钟」会自动关机并杀掉 nohup 进程。<strong>长时间下载要保持 Web IDE 页面有操作</strong>（隔十几分钟敲一条命令即可）。脚本所有阶段都是幂等的，被关机后重启环境、再跑一次 <code>all</code> 会自动跳过已完成步骤、续传权重。</p>
+<blockquote>
+<p>⚠️ 保活 = 持续扣卡时。下载/测试结束后<strong>务必撤销保活并关机</strong>。曾因页面里残留一个 8 分钟一次的保活定时器，让环境永不空闲、白白烧掉卡时。</p>
+</blockquote>
+<h3 id="_4">检查点</h3>
+<pre><code class="language-bash">grep -E 'ALL_MODELS_VERIFIED|IMPORT_CHAIN_OK|TLS_FIX' /mnt/workspace/_wb_all.log
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8188/system_stats   # 期望 200
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8191/health        # 期望 200
+</code></pre>
+<hr />
+<h2 id="5-sentencepiece-tls">5. 最关键的坑：sentencepiece 静态 TLS</h2>
+<p><strong>症状</strong>：ComfyUI 启动即退出，日志里报
+<code>libgomp-&lt;hash&gt;.so.1.0.0: cannot allocate memory in static TLS block</code>。</p>
+<blockquote>
+<p>📌  bundled 库的真名是 <strong><code>libgomp-dcaa4144.so.1.0.0</code></strong>（auditwheel 的 <code>libgomp-&lt;hash&gt;</code> 命名）。早期靠截图 OCR 抄成 <code>libwgmp-…</code>，导致所有 <code>grep</code> / <code>patchelf</code> / <code>readelf</code> 排查全部落空。用 Python <code>repr()</code> 打印目录项才查实。</p>
+</blockquote>
+<p><strong>根因</strong>：<code>torch_npu</code> 导入时已加载系统 <code>libgomp.so.1</code>；而 pip 装的 <code>sentencepiece 0.2.3</code> wheel 的 <code>_sentencepiece*.so</code> 里 <code>DT_NEEDED</code> 指向自带的另一个 bundled <code>libgomp-&lt;hash&gt;.so.1.0.0</code>，<code>dlopen</code> 时作为新库申请静态 TLS ⇒ 失败。作者实跑镜像没这个问题。</p>
+<p><strong>正解（脚本已自动做，<code>fix</code> 阶段 / <code>deps</code> 末尾 / <code>start</code> 开头都会幂等执行）</strong>：在 <code>.dynstr</code> 里<strong>原地等长改写</strong>该字符串为 <code>libgomp.so.1</code>（后面补 NUL 填充）。<code>.gnu.version_r</code> 按偏移引用同一字符串，会自动同步，不破坏符号版本需求。</p>
+<pre><code class="language-bash">bash /mnt/workspace/deploy-h3-cannlab.sh fix
+# 验证
+/mnt/workspace/h3-ascend/.venv/bin/python -c \
+  'import torch, torch_npu, torchaudio, sentencepiece; print(&quot;IMPORT_CHAIN_OK&quot;)'
+</code></pre>
+<p><strong>❌ 已实测无效 / 有害的做法，别再试</strong>：</p>
+<ul>
+<li><code>pip install --no-binary :all: sentencepiece==0.2.3</code> 源码编译 → setuptools 报 <code>project.license must be valid exactly by one definition</code>；</li>
+<li><code>LD_PRELOAD</code>（bundled 库 / 系统 libgomp / 两者各种顺序）→ 静态 TLS 总量不够两个 libgomp 共存；</li>
+<li>把 bundled 库软链到系统 libgomp → 仍按新库加载；</li>
+<li>⛔ <strong><code>patchelf --remove-needed</code></strong> → 不更新 <code>.gnu.version_r</code>，触发 <code>_dl_check_map_versions: Assertion 'needed != NULL' failed</code>。</li>
+</ul>
+<hr />
+<h2 id="6">6. 服务端口与启动</h2>
+<pre><code class="language-bash">cd /mnt/workspace &amp;&amp; bash deploy-h3-cannlab.sh start
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>端口</th>
+<th>服务</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>8188</code></td>
+<td>ComfyUI</td>
+<td><code>/system_stats</code>、<code>/prompt</code>、<code>/history/{id}</code>、<code>/ws</code></td>
+</tr>
+<tr>
+<td><code>8191</code></td>
+<td>api-gateway <strong>真实 API</strong></td>
+<td><code>/health</code>、<code>/docs</code></td>
+</tr>
+<tr>
+<td><code>8190</code></td>
+<td>api-gateway 反向代理</td>
+<td>⚠️ <code>/health</code> 恒 404，<strong>别拿它做健康检查</strong>，否则每次 start 都误判并重复拉起进程</td>
+</tr>
+<tr>
+<td><code>8189</code></td>
+<td>Basic Auth 认证代理</td>
+<td>见第 8 节</td>
+</tr>
+</tbody>
+</table>
+<p>所有服务只监听 <code>127.0.0.1</code>。日志：<code>/mnt/workspace/h3-ascend/logs/comfyui.log</code> 与 <code>api-gateway.log</code>。</p>
+<blockquote>
+<p>⚠️ <code>nohup ... &gt; log</code> 时 Python stdout 是全缓冲，出片脚本的 <code>prompt_id</code> 要等进程结束才刷出。期间用 <code>curl 127.0.0.1:8188/queue</code> 和 <code>logs/comfyui.log</code> 看进度更可靠；脚本里已用 <code>python3 -u</code> 规避。</p>
+</blockquote>
+<hr />
+<h2 id="7">7. 出片（视频 + 原生音频）</h2>
+<pre><code class="language-bash">cp /mnt/workspace/prompt.txt /mnt/workspace/h3-ascend/prompt.txt   # 首次：放到脚本默认读取的位置
+vi /mnt/workspace/h3-ascend/prompt.txt                              # 改提示词
+bash /mnt/workspace/gen_video.sh                                    # 一键出片
+</code></pre>
+<blockquote>
+<p>⚠️ <code>gen_video.py</code> 默认读 <code>/mnt/workspace/h3-ascend/prompt.txt</code>，而脚本包里的模板在 <code>/mnt/workspace/prompt.txt</code>；也可以用 <code>--prompt-file /mnt/workspace/prompt.txt</code> 或 <code>--prompt "..."</code> 绕开。</p>
+<p>⚠️ <strong>不要提前手工创建 <code>/mnt/workspace/h3-ascend/</code> 目录</strong>：<code>code</code> 阶段要 <code>git clone</code> 到该路径，目录已存在且非空会让 clone 直接失败。上面的 <code>cp</code> 必须在 <code>deploy-h3-cannlab.sh all</code> 跑完之后执行。</p>
+</blockquote>
+<p>脚本会按 <code>class_type</code> 定位节点改参数后 POST <code>8188/prompt</code>，轮询 <code>/history/{pid}</code> 到完成并打印产物绝对路径。参数（也可用同名环境变量）：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--prompt</code> / <code>--prompt-file</code></td>
+<td><code>h3-ascend/prompt.txt</code></td>
+<td>提示词，支持中文</td>
+</tr>
+<tr>
+<td><code>--seed</code></td>
+<td><code>-1</code></td>
+<td>随机种子，-1 每次随机</td>
+</tr>
+<tr>
+<td><code>--width</code> / <code>--height</code></td>
+<td><code>736</code> / <code>416</code></td>
+<td>分辨率</td>
+</tr>
+<tr>
+<td><code>--length</code></td>
+<td><code>124</code></td>
+<td>帧数，24fps 时 ≈5.17 秒</td>
+</tr>
+<tr>
+<td><code>--fps</code></td>
+<td><code>24</code></td>
+<td>帧率</td>
+</tr>
+<tr>
+<td><code>--steps</code></td>
+<td><code>6</code></td>
+<td>turbo LoRA 固定 6 步，不建议改</td>
+</tr>
+<tr>
+<td><code>--prefix</code></td>
+<td><code>video/my_h3</code></td>
+<td>输出前缀，相对 <code>ComfyUI/output/</code></td>
+</tr>
+<tr>
+<td><code>--no-wait</code> / <code>--timeout</code></td>
+<td>1800s</td>
+<td>只提交 / 最长等待</td>
+</tr>
+</tbody>
+</table>
+<p>示例：</p>
+<pre><code class="language-bash">SEED=20261115 PREFIX=video/demo bash /mnt/workspace/gen_video.sh --prompt &quot;一个人在阳光下微笑&quot;
+</code></pre>
+<p><strong>实测结果</strong>：<code>Prompt executed in 338.58 seconds</code>，产物 <code>ComfyUI/output/video/..._00001_.mp4</code>，约 310KB，<code>av</code> 检查流为 <code>[('video','h264'), ('audio','aac')]</code>，时长 5.17 秒 —— 视频与原生音频都生成了。</p>
+<blockquote>
+<p>⚠️ <strong><code>.api.json</code> 与 <code>.ui.json</code> 不能混用</strong>：网页画布 Load 的是 UI 格式（有 <code>nodes</code>/<code>links</code>），命令行 POST <code>/prompt</code> 用的是 API 格式（<code>{"1":{"class_type":...}}</code>）。<code>gen_video.py</code> 用的是 <code>h3_larry_v4_6step_2npu.api.json</code>（16 节点）。</p>
+</blockquote>
+<hr />
+<h2 id="8-comfyui">8. ComfyUI 图形界面（可选，三选一）</h2>
+<p>CANNLab Web IDE <strong>没有端口转发</strong>，浏览器无法直接访问 <code>127.0.0.1:8188</code>。给图形界面开通道有三条路：</p>
+<h3 id="afrpc-frps">路线 A：frpc（需要你自备 frps 服务端，地址固定）</h3>
+<p>适合有公网服务器/NAS 的情况。本例用 <code>frps 0.71.0</code>，<code>allowPorts 10000–20000</code>，<code>remotePort=18188</code>。</p>
+<ol>
+<li>在 frps 服务器取 <code>auth.token</code>，写到容器内 <code>/mnt/workspace/.frps_token</code>（权限 600），<strong>不要写进任何脚本或文档</strong>：</li>
+</ol>
+<p><code>bash
+   printf '%s' '你的token' &gt; /mnt/workspace/.frps_token
+   chmod 600 /mnt/workspace/.frps_token</code></p>
+<ol start="2">
+<li>把 <code>comfy_tunnel.sh</code> 里的 <code>vnts2.770710712.xyz</code> 换成你的 frps 域名、<code>18188</code> 换成你的远程端口（共 3 处：<code>PUBLIC_URL</code>、<code>ensure_frpc()</code> 内 <code>frpc.toml</code> 模板的 <code>serverAddr</code> 与 <code>remotePort</code>）：</li>
+</ol>
+<p><code>bash
+   cd /mnt/workspace
+   sed -i 's/vnts2\.770710712\.xyz/YOUR_FRPS_HOST/g; s/18188/YOUR_REMOTE_PORT/g' comfy_tunnel.sh</code></p>
+<p>端口必须落在 frps 的 <code>allowPorts</code> 范围内；<code>frpc.toml</code> 由脚本首次启动时自动生成，不用手写。若你的 frps 监听端口不是 <code>7000</code>，还要改模板里的 <code>serverPort = 7000</code>。
+3. 启动：</p>
+<pre><code class="language-bash">bash /mnt/workspace/comfy_tunnel.sh start
+bash /mnt/workspace/comfy_tunnel.sh status
+bash /mnt/workspace/comfy_tunnel.sh url
+</code></pre>
+<p>链路：<code>ComfyUI 8188</code> ← <code>认证代理 8189</code> ← <code>frpc</code> ← <code>frps:18188</code>。用户名默认 <code>comfy</code>，密码由脚本自动生成并存 <code>/mnt/workspace/.comfy_web_pass</code>（首次生成后固定）。访问信息会写入 <code>/mnt/workspace/COMFY_ACCESS.txt</code>。</p>
+<blockquote>
+<p>⚠️ frpc 与 frps <strong>版本要一致</strong>（本例 0.71.0）。若报 <code>token in login doesn't match token from configuration</code>，别急着换版本：先用 sha 比对 <code>.frps_token</code> 与 <code>frpc.toml</code> 里 <code>auth.token</code> 是否一致，多数情况是提取 token 时正则取错值。</p>
+<p>⚠️ <code>ensure_frpc()</code> 会从 GitHub Releases 拉 <code>frp_0.71.0_linux_arm64.tar.gz</code>，而容器对 GitHub 的连通性不稳定（<code>git clone</code> 实测 <code>Empty reply from server</code>）。若下载失败，可在本机下载该包、只取 <code>frpc</code> 一个二进制，用 base64 上传到 <code>/mnt/workspace/bin/frp071/frpc</code> 并 <code>chmod +x</code> 即可。</p>
+</blockquote>
+<h3 id="bcloudflared-quick-tunnel">路线 B：cloudflared Quick Tunnel（零服务端，代价是域名每次变）</h3>
+<p>不需要账号/域名/服务端，纯出站 TCP 7844 即可。缺点是 <code>*.trycloudflare.com</code> 域名<strong>每次重启都会变</strong>。本仓库的 <code>comfy_tunnel.sh</code> 已是 frpc 版；若要用 cloudflared，把 <code>start</code> 里的 frpc 段换成下载 <code>cloudflared-linux-arm64</code> 并 <code>tunnel --url http://127.0.0.1:8189</code>，从日志抓域名写入 <code>COMFY_URL.txt</code> 即可。认证代理照旧保留。</p>
+<h3 id="c-vs-code-remote-ssh">路线 C：本地 VS Code Remote SSH 转发</h3>
+<p>用 AtomGit Dev Space + Remote SSH 连上环境后转发 8188，再访问 <code>http://localhost:8188</code>。适合不想开公网入口的场景。</p>
+<h3 id="_5">为什么必须加认证代理</h3>
+<p>ComfyUI 本身没有鉴权，直接暴露公网等于裸奔。<code>comfy_tunnel_auth.py</code> 在 <code>8189</code> 做 HTTP Basic Auth，并<strong>完整双向转发 <code>/ws</code> WebSocket</strong> —— 否则前端实时进度/预览会失效。验证：</p>
+<pre><code class="language-bash">curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8189/system_stats          # 401 = 正确
+curl -s -o /dev/null -w '%{http_code}\n' -u comfy:密码 http://127.0.0.1:8189/system_stats  # 200
+</code></pre>
+<blockquote>
+<p>⚠️ <strong>本机 HTTP 代理会吃掉 WebSocket 的 Upgrade 头</strong>，浏览器走代理时前端报 <code>400 No WebSocket UPGRADE hdr</code>。必须把公网域名加入直连/白名单；命令行验证要加 <code>curl --noproxy '*'</code>。正常表现是 <code>101 Switching Protocols</code> + 收到 <code>{"type":"status"}</code>。</p>
+<p>⚠️ 无论哪条路线，<strong>不要把 ComfyUI 地址和密码外传</strong>。</p>
+</blockquote>
+<hr />
+<h2 id="9">9. 开机自启</h2>
+<p>平台启动链：<code>tini</code> → <code>/start_docker.sh</code> → supervisor（<code>bash -l -c</code>，user=developer）。<strong>没有 systemd / cron / at</strong>。</p>
+<ul>
+<li>⚠️ <code>/start_docker.sh</code> 每次开机用 <code>/opt/home/developer/</code> <strong>覆盖</strong> <code>~/.bashrc</code> 和 <code>~/.profile</code> ⇒ 改这两个文件无效。</li>
+<li>✅ 但它<strong>不会创建 <code>~/.bash_profile</code></strong>，而 <code>bash -l</code> 优先读它 ⇒ 钩子放 <code>/home/developer/.bash_profile</code>（在持久卷 <code>/home</code> 上）。</li>
+</ul>
+<pre><code class="language-bash">bash /mnt/workspace/setup_autostart.sh      # 幂等；原文件存在会先备份为 .bash_profile.wbbak
+bash -l -c true                            # 模拟登录 shell，验证钩子被触发
+tail -30 /mnt/workspace/logs/auto_start.log
+</code></pre>
+<p><code>auto_start.sh</code> 会：等持久卷挂载（最多 60s）→ 用锁目录 + 存活 pid 防并发 → ComfyUI 未起则执行 <code>deploy-h3-cannlab.sh start</code> 并轮询 8188（最多 270s）→ 执行 <code>comfy_tunnel.sh start</code> → 重写 <code>COMFY_ACCESS.txt</code>。</p>
+<p>验证方法：把 ComfyUI 和隧道全停，再触发一次 <code>bash -l -c true</code>，应能自动恢复到 <code>8188=200</code>、frpc 运行中、认证代理运行中。</p>
+<blockquote>
+<p>⚠️ 调用脚本一律用<strong>硬编码绝对路径</strong>（曾写成 <code>bash "$ROOT/comfy_tunnel.sh start"</code> 把参数包进引号，服务在跑时被幂等掩盖，全停才暴露）。开机自启只在本机验证过；真实「关机 → 开机」链路依赖 supervisor 同样用 <code>bash -l -c</code>，逻辑上是闭环的。</p>
+</blockquote>
+<hr />
+<h2 id="10">10. 文生图 / 图生图扩展（可选）</h2>
+<p>这套 ComfyUI 已打过 <strong>Ascend NPU 补丁</strong>（<code>comfy/model_management.py</code> 里有 <code>import torch_npu</code>、<code>torch.npu.is_available()</code>、<code>is_ascend_npu()</code>），所以标准 SD/FLUX checkpoint 有机会直接在 910C 上跑，不只能跑 H3。</p>
+<pre><code class="language-bash">bash /mnt/workspace/download_models.sh          # 幂等 + aria2 续传 + 字节数校验
+cat /mnt/workspace/logs/models_dl.log           # 看 DONE / FAIL / ALL_FINISHED
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>用途</th>
+<th>落盘位置</th>
+<th>大小</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sd_xl_base_1.0.safetensors</code></td>
+<td>文生图主力，也可 img2img</td>
+<td><code>models/checkpoints/</code></td>
+<td>6.94 GB</td>
+</tr>
+<tr>
+<td><code>flux1-schnell-fp8.safetensors</code></td>
+<td>热门 4 步出图（全合一 checkpoint）</td>
+<td><code>models/checkpoints/</code></td>
+<td>17.24 GB</td>
+</tr>
+<tr>
+<td><code>v1-5-pruned-emaonly-fp16.safetensors</code></td>
+<td>图生图 / LoRA / ControlNet 生态</td>
+<td><code>models/checkpoints/</code></td>
+<td>2.13 GB</td>
+</tr>
+<tr>
+<td><code>sdxl_vae_fp16fix.safetensors</code></td>
+<td>修 SDXL 半精度黑图</td>
+<td><code>models/vae/</code></td>
+<td>335 MB</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <code>madebyollin/sdxl-vae-fp16-fix</code> 仓库里的真实文件名是 <code>sdxl_vae.safetensors</code>，下载后另存为 <code>sdxl_vae_fp16fix.safetensors</code>；直接用后者拼 URL 会 404。</p>
+</blockquote>
+<h3 id="workflows_to_test">工作流包 <code>workflows_to_test/</code></h3>
+<table>
+<thead>
+<tr>
+<th>子目录</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ready/</code></td>
+<td><strong>6 个即开即用</strong>：checkpoint 名已改成上面实际下载的文件名，links 校验 0 错误 —— <code>01</code> SD1.5 图生图、<code>02</code> SDXL 文生图、<code>03</code> FLUX schnell 文生图、<code>04</code> SD1.5 高清修复、<code>05</code> SD1.5 局部重绘、<code>06</code> SD1.5 ControlNet</td>
+</tr>
+<tr>
+<td><code>official/</code></td>
+<td>10 组 ComfyUI 官方 <code>ComfyUI_examples</code>：PNG + 从 PNG <code>tEXt/iTXt</code> 元数据提取出的标准 UI JSON，全是内置节点</td>
+</tr>
+<tr>
+<td><code>community/</code></td>
+<td>7 个社区热门模板（SDXL Turbo、FLUX dev/schnell/FLUX2、Kandinsky5、FLUX 参考图等）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>下次开机测试</strong>：打开 ComfyUI 网页 → <strong>Load</strong> → 上传 <code>ready/*.json</code> → Queue Prompt。</p>
+<p>风险提示：
+- 社区 JSON 里带 UUID 节点的是<strong>子图/自定义插件</strong>，这个环境没装对应插件，加载会出红节点，建议后测。
+- <code>ready_06</code> 还缺一份 ControlNet 权重，需要额外下载。
+- <strong>FLUX fp8</strong> 在昇腾上可能回退 fp16，速度偏慢；若 SDXL 出黑图，手动加 <code>VAELoader</code> 选 <code>sdxl_vae_fp16fix</code>。
+- 容器里 <code>raw.githubusercontent.com</code> 不通（返回 <code>000</code>），工作流从本地上传，别指望在容器内直接 clone GitHub。</p>
+<hr />
+<h2 id="11">11. 卡时管理与关机</h2>
+<ol>
+<li>撤销一切页面/脚本保活（否则环境永不空闲，持续扣卡时）。</li>
+<li>确认文件都在持久卷：<code>ls /mnt/workspace/</code>、<code>cat /mnt/workspace/logs/models_dl.log</code>。</li>
+<li>环境页 <code>https://gitcode.com/org/cann/cannlab/environment</code> → 找到实例 → 点「<strong>关机</strong>」→ 确认。</li>
+<li>状态依次走「正在保存运行状态… → 正在停止服务… → 正在关闭系统…」，最终显示 <strong>已关机 / 运行中实例 0</strong>。</li>
+</ol>
+<blockquote>
+<p>⚠️ 关机后页面可能残留一个可见的「启动实例」确认框模板，点「取消」清掉，<strong>别误点「启动」</strong>，否则又开始扣卡时。</p>
+<p>⚠️ 关机会清掉 <code>/etc</code>、<code>/opt</code> 里的改动，但 <code>/mnt/workspace</code>、<code>/home</code> 权重/脚本/产物全部保留；下次开机跑一次 <code>deploy-h3-cannlab.sh start</code>（或让自启脚本代劳）即可恢复服务。</p>
+</blockquote>
+<hr />
+<h2 id="12">12. 故障排查速查表</h2>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git clone</code> GitHub 报 <code>Empty reply from server</code></td>
+<td>容器内 GitHub 不通</td>
+<td>用 <code>https://gitcode.com/gh_mirrors/co/ComfyUI.git</code> 或 <code>https://gitee.com/mirrors/ComfyUI.git</code></td>
+</tr>
+<tr>
+<td>clone 成功但 checkout 时 <code>fatal: ...</code></td>
+<td><code>--filter=blob:none</code> 惰性取 blob 回源 GitHub</td>
+<td>改<strong>完整</strong> <code>git clone --no-checkout</code>，校验 commit 后 <code>checkout --detach</code></td>
+</tr>
+<tr>
+<td><code>git apply</code> 补丁预检失败</td>
+<td>ComfyUI 版本不对</td>
+<td>必须锁 <code>bd34f338…</code>；脚本用 <code>--reverse --check</code> 保证幂等</td>
+</tr>
+<tr>
+<td><code>libtorchaudio.abi3.so: undefined symbol</code></td>
+<td>镜像自带 torchaudio 2.11 与 torch 2.7.1 ABI 不符</td>
+<td><code>pip install --no-deps --force-reinstall 'torchaudio==2.7.1'</code></td>
+</tr>
+<tr>
+<td><code>cannot allocate memory in static TLS block</code></td>
+<td>sentencepiece bundled libgomp</td>
+<td><code>bash deploy-h3-cannlab.sh fix</code>（见第 5 节）</td>
+</tr>
+<tr>
+<td><code>_dl_check_map_versions: Assertion 'needed != NULL'</code></td>
+<td>用了 <code>patchelf --remove-needed</code></td>
+<td>从 <code>.pre_tls_fix</code> 备份恢复 <code>.so</code>，改用等长改写</td>
+</tr>
+<tr>
+<td><code>prepare_workflows.py</code> 找不到 <code>H2Videos_usage.log</code></td>
+<td>脚本按 <code>ROOT=deployment/</code> 算相对路径</td>
+<td>建 <code>deployment/upstream/</code> 软链到实际 clone 位置</td>
+</tr>
+<tr>
+<td>工作流模板找不到</td>
+<td><code>prepare_workflows.py</code> 写到 <code>deployment/workflows/</code></td>
+<td>复制到 <code>ROOT/workflows/</code></td>
+</tr>
+<tr>
+<td>ComfyUI 起不来 / 启动参数报错</td>
+<td>用了模板版 <code>start.sh</code></td>
+<td>用作者验证版 <code>deployment/scripts/start.sh</code>（含 <code>LD_PRELOAD</code> + <code>--cache-classic</code>）</td>
+</tr>
+<tr>
+<td><code>8190/health</code> 恒 404</td>
+<td>8190 只是反代</td>
+<td>健康检查用 <strong><code>8191/health</code></strong></td>
+</tr>
+<tr>
+<td><code>TUNSETIFF: Operation not permitted</code></td>
+<td>容器无 <code>CAP_NET_ADMIN</code></td>
+<td>VNT/WireGuard 不可用，改走 frpc / cloudflared（纯出站）</td>
+</tr>
+<tr>
+<td>frpc <code>token in login doesn't match</code></td>
+<td>客户端 token 写错（多数）</td>
+<td>sha 比对 <code>.frps_token</code> 与 <code>frpc.toml</code>，并确保 frpc/frps 同版本</td>
+</tr>
+<tr>
+<td>前端 <code>400 No WebSocket UPGRADE hdr</code></td>
+<td>本机 HTTP 代理吃了 Upgrade 头</td>
+<td>域名加入直连白名单；curl 加 <code>--noproxy '*'</code></td>
+</tr>
+<tr>
+<td>环境莫名关机 / nohup 被杀</td>
+<td>单卡环境空闲 30 分钟自动关机</td>
+<td>长任务保活；脚本幂等，重启后续跑</td>
+</tr>
+<tr>
+<td>卡时掉得比预期快</td>
+<td>页面残留保活 JS / 后台保活任务</td>
+<td><code>clearInterval</code> 撤销；不用就关机</td>
+</tr>
+<tr>
+<td>网页 Load JSON 报错</td>
+<td>把 <code>.api.json</code> 当 UI 工作流用了</td>
+<td>画布用 UI 格式，命令行提交用 API 格式</td>
+</tr>
+<tr>
+<td>终端卡住等输入</td>
+<td>多行 heredoc 卡 shell</td>
+<td>Ctrl+C 解围；多行脚本一律 base64 单行上传</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="13">13. 换账号时必须替换／确认的清单</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CANNLab 账号与实例</strong></td>
+<td>新账号需自行注册认证并领取初始 100 卡时；环境名/实例 ID 脚本里没有硬编码</td>
+</tr>
+<tr>
+<td><strong>frps 服务端</strong>（若用路线 A）</td>
+<td>改 <code>comfy_tunnel.sh</code> 里的 <code>serverAddr</code>、<code>remotePort</code>、<code>PUBLIC_URL</code>；把服务端 <code>auth.token</code> 写入 <code>/mnt/workspace/.frps_token</code>，权限 600。<strong>token 与密码不要写进文档、脚本或截图</strong></td>
+</tr>
+<tr>
+<td><strong>没有 frps 怎么办</strong></td>
+<td>改走路线 B（cloudflared Quick Tunnel，域名每次变）或路线 C（本地 VS Code 转发）</td>
+</tr>
+<tr>
+<td><strong>ComfyUI 用户名/密码</strong></td>
+<td>由 <code>comfy_tunnel.sh</code> 首次启动自动生成，存 <code>/mnt/workspace/.comfy_web_pass</code>；可用环境变量 <code>COMFY_WEB_USER</code> 改用户名</td>
+</tr>
+<tr>
+<td><strong>持久卷路径</strong></td>
+<td>默认 <code>/mnt/workspace</code>、<code>/home</code>。脚本里全是硬编码，改路径要同步改所有脚本，不建议</td>
+</tr>
+<tr>
+<td><strong>镜像版本</strong></td>
+<td>若平台模板升级（CANN 9.1 / Python 3.12 / torch 2.10），本手册的依赖锁定与静态 TLS 修复可能不再适用，需重新跑 <code>precheck</code> 并逐项验证</td>
+</tr>
+<tr>
+<td><strong>模型与权重</strong></td>
+<td>67.7GB H3 权重 + 26.6GB 文生图模型共约 95GB，200GiB 数据盘足够；换账号要重新下载（不跨账号共享）</td>
+</tr>
+<tr>
+<td><strong>工作流</strong></td>
+<td>从 <code>CANNLab_H3_Replication_Kit.zip</code> 本地上传；<code>ready/</code> 里的 checkpoint 名与第 10 节下载的文件名一一对应，若改了模型文件名要同步改 JSON</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="a">附录 A：常用命令速查</h2>
+<pre><code class="language-bash"># —— 部署 ——
+cd /mnt/workspace
+bash deploy-h3-cannlab.sh precheck|all|models|deps|config|start|smoke|fix
+
+# —— 服务 ——
+curl -s http://127.0.0.1:8188/system_stats
+curl -s http://127.0.0.1:8191/health
+curl -s http://127.0.0.1:8188/queue
+tail -f /mnt/workspace/h3-ascend/logs/comfyui.log
+
+# —— 出片 ——
+bash /mnt/workspace/gen_video.sh
+bash /mnt/workspace/gen_video.sh --prompt &quot;...&quot; --seed 42 --prefix video/demo
+
+# —— 公网入口 ——
+bash /mnt/workspace/comfy_tunnel.sh start|stop|status|url|restart
+cat /mnt/workspace/COMFY_ACCESS.txt
+
+# —— 自启 ——
+bash /mnt/workspace/setup_autostart.sh
+bash -l -c true &amp;&amp; tail -30 /mnt/workspace/logs/auto_start.log
+
+# —— 文生图模型 ——
+bash /mnt/workspace/download_models.sh
+cat /mnt/workspace/logs/models_dl.log
+</code></pre>
+<h2 id="b">附录 B：参考来源</h2>
+<ul>
+<li>上游项目：<code>https://github.com/OwenLittleWhite/cannlab-h3-ascend</code>（MiniMax H3 视频+音频在昇腾的 ComfyUI 适配源码与补丁快照）</li>
+<li>上游权重/工作流：<code>https://gitcode.com/Ascend-SACT/MiniMax-H3-Comfy-NPU</code></li>
+<li>ComfyUI 官方示例工作流：<code>https://github.com/comfyanonymous/ComfyUI_examples</code></li>
+<li>平台：<code>https://gitcode.com/org/cann/cannlab</code>（用户指南、卡时规则、帮助文档）</li>
+<li>模型下载镜像：<code>https://hf-mirror.com</code>、<code>https://www.modelscope.cn</code>；pip 用清华源 <code>https://pypi.tuna.tsinghua.edu.cn/simple</code></li>
+</ul>
+<hr />
+<p><strong>最后一句</strong>：这套环境开机就在扣卡时。部署完成后先确认所有文件落在 <code>/mnt/workspace</code>，然后去环境页点「关机」；下次要用再启动，自启脚本会把 ComfyUI 和公网入口拉回来。</p>
+</main>
+</div>
+<script>
+document.querySelectorAll('pre').forEach(function(p){
+  var b=document.createElement('button'); b.className='copy'; b.textContent='复制';
+  b.onclick=function(){var t=p.querySelector('code').textContent;
+    navigator.clipboard.writeText(t).then(function(){b.textContent='已复制';setTimeout(function(){b.textContent='复制'},1500)});
+  }; p.appendChild(b);
+});
+</script>
+</body>
+</html>
